@@ -140,9 +140,8 @@ bool BackEnd::outputDueItem()
 
 CString BackEnd::saveFile()
 {
-	// Because my lamptop is being an arse and disconnecting the USB the moment
-	// it sees it being actively written to, we need to save a copy locally as backup
-	// we could deffo refactor this though
+	// Save a copy locally as backup.
+	// We could deffo refactor this though
 
 	CString szReturn(_T(""));
 
@@ -375,7 +374,6 @@ void BackEnd::readReferenceFile()
 
 	// Now order these alphabetically. This may help when we deal with duplicates.
 	std::sort(referenceList.begin(), referenceList.end(), alphTranslationCmp);
-
 }
 
 
@@ -585,14 +583,12 @@ void BackEnd::equalise()
 
 bool priorityCmp(Phrase* one, Phrase* two)
 {
-	return (one->getPriority() >
-		two->getPriority());
+	return (one->getPriority() > two->getPriority());
 }
 
 bool alphTranslationCmp(Phrase* one, Phrase* two)
 {
-	return (one->getTranslation() >
-		two->getTranslation());
+	return (one->getTranslation() > two->getTranslation());
 }
 
 
