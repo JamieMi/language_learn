@@ -3,14 +3,17 @@
 
 #include <string>
 #include <vector>
+#include "sstream"
+#include <iostream>
+#include <fstream>
 
 using namespace std;
+typedef std::size_t isize;
 
 #ifndef LL_BACKEND
 #define LL_BACKEND
 
-const size_t NUM_PREVIEW_DUE_DAYS = 7;
-
+const isize NUM_PREVIEW_DUE_DAYS = 7;
 
 class Test
 {
@@ -37,7 +40,7 @@ private:
 class Phrase
 {
 public:
-	Phrase(const string& phrase, const string& translation, const time_t& enteredTime, const size_t milestoneAchieved = 0);
+	Phrase(const string& phrase, const string& translation, const time_t& enteredTime = 0, isize milestoneAchieved = 0);
 	~Phrase();
 	string getPhrase() {
 		//if (!m_bReversed){
@@ -55,15 +58,24 @@ public:
 		//	return m_phrase;
 		//}
 	}
+
+	void setPhrase(string phrase) {
+		m_phrase = phrase;
+	}
+	void setTranslation(string translation) {
+		m_translation = translation;
+	}
+
 	int getPriority() {
 		return m_priority;
 	}
+
 	int calculatePriority();
 
-	size_t getMilestone() const {
+	std::size_t getMilestone() const {
 		return m_mileStone;
 	}
-	void setMilestone(const size_t milestone ) {
+	void setMilestone(const std::size_t milestone ) {
 		m_mileStone = milestone;
 	}
 
@@ -83,7 +95,7 @@ private:
 	string m_translation;
 	time_t m_enteredTime;
 	int m_priority;
-	size_t m_mileStone;// #s, not an index. Next milestone
+	isize m_mileStone;// #s, not an index. Next milestone
 
 	//string serialise();
 	void read(string sRecord);
@@ -94,11 +106,11 @@ public:
 class Milestone
 {
 public:
-	Milestone(size_t milestone = 0)
+	Milestone(std::size_t milestone = 0)
 	{
 		periodSeconds = milestone;
 	}
-	size_t periodSeconds;
+	isize periodSeconds;
 };
 
 class Statistics
@@ -118,17 +130,19 @@ public:
 			dueByDay.push_back(0);
 		}
 	}
-	size_t vocabularySize;
-	size_t activeVocabularySize;
-	size_t dueVocabularySize;
-	size_t successes;
-	size_t failures;
-	size_t successesThisSession;
-	size_t failuresThisSession;
-	vector<size_t> dueByDay;
+	isize vocabularySize;
+	isize activeVocabularySize;
+	isize dueVocabularySize;
+	isize successes;
+	isize failures;
+	isize successesThisSession;
+	isize failuresThisSession;
+	vector<isize> dueByDay;
 };
 
 bool priorityCmp(Phrase* one, Phrase* two);
+bool alphTranslationCmp(Phrase* one, Phrase* two);
+
 
 class BackEnd
 {
@@ -137,20 +151,29 @@ public:
 	~BackEnd();
 	void getSelection();
 	void readFile();
+	void readReferenceFile();
+	std::size_t lookupTranslation(Phrase* ourPhrase, Phrase* referenceListPhrase);
 	CString saveFile();
 	void deletePhrase();
+	void updatePhrase(Phrase newPhrase);
+	bool outputDueItem();
 	void logTest(bool bSuccess);
 	vector<Phrase*> phraseList;
+	vector<Phrase*> referenceList;
 	Statistics m_stats;
 	std::string m_filePath;
+	std::string m_referenceFilePath;
 	std::vector<Phrase*> m_batch;
 	std::vector<Phrase*>::iterator m_batchItr;
 	void reverse();
 	void equalise();
+	void openDueFile();
+	void saveDueFile();
 private:
 	std::vector<Milestone*> m_mileStones;
 	bool m_bReversed;
-	
+	std::stringstream m_ss;
+	std::ofstream m_dueItemsFile;
 };
 
 #endif LL_BACKEND

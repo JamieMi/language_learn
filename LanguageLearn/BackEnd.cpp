@@ -1,10 +1,9 @@
-
 #include "stdafx.h"
-#include "backend.h"
 #include <sstream>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include "backend.h"
 
 Phrase::Phrase(const string& phrase, const string& translation, const time_t& enteredTime, const size_t milestone)
 {
@@ -115,6 +114,29 @@ int Phrase::calculatePriority()
 }
 
 const int BATCH_SIZE = 6;
+
+void BackEnd::openDueFile()
+{
+	m_dueItemsFile.open(_T("C:\\temp\\dueitems.txt", std::ios::app | std::ofstream::out | std::ofstream::app));
+}
+
+void BackEnd::saveDueFile()
+{
+	m_dueItemsFile << m_ss.rdbuf();
+	m_dueItemsFile.flush();
+	m_dueItemsFile.close();
+}
+
+bool BackEnd::outputDueItem()
+{
+	std::ofstream dueItemsFile;
+
+	m_ss << (*m_batchItr)->getTranslation();
+	m_ss << '|';
+	m_ss << (*m_batchItr)->getPhrase();
+	m_ss << endl;
+	return (m_stats.dueVocabularySize > 10);
+}
 
 CString BackEnd::saveFile()
 {
@@ -311,6 +333,90 @@ void BackEnd::readFile()
 	}
 }
 
+
+void BackEnd::readReferenceFile()
+{
+	// text is structured like the vocabulary file, although not every line will be vocab
+
+	std::string phraseEnglish;
+	std::string phraseOther;
+
+	string m_referenceFilePath = "C:\\temp\\German words to do.txt";
+	std::ifstream inFile(m_referenceFilePath.c_str());
+
+	std::string line;
+	while (std::getline(inFile, line))
+	{
+		size_t index = line.find('|');
+
+		if (index == std::string::npos)
+		{
+			if (line.empty() || line.at(0)=='=')
+			{
+				continue;
+			}
+			else
+			{ 
+				// we'll assume that a line formatted without a translation might be in the other language without a translation
+				phraseOther = line;
+				phraseEnglish = "";
+			}
+		}
+		else
+		{
+			phraseOther = line.substr(0, index);
+			line.erase(0, index + 1);
+			phraseEnglish = line;
+		}
+
+		Phrase* phr = new Phrase(phraseEnglish, phraseOther); // we're only interested in using the text here - time and status don't matter
+		referenceList.push_back(phr);
+	}
+
+	// Now order these alphabetically. This may help when we deal with duplicates.
+	std::sort(referenceList.begin(), referenceList.end(), alphTranslationCmp);
+
+}
+
+
+std::size_t BackEnd::lookupTranslation(Phrase* ourPhrase, Phrase* referenceListPhrase)
+{
+	std::size_t count = 0;
+	
+	// not the optimum way to search, and we aren't making use of our ordering yet
+	for (auto& x : referenceList)
+	{
+		if (x->getTranslation() == ourPhrase->getTranslation().c_str())
+		{
+			count++;
+			if (x->getPhrase() == ourPhrase->getPhrase())
+			{
+				// everything matches (at least for a first match)
+				
+			}
+			else
+			{
+				// return the alternative English that we have found:
+				referenceListPhrase->setPhrase(x->getPhrase());
+			}
+		}
+		else // translation differs
+		{
+			if (x->getPhrase() == ourPhrase->getPhrase())
+			{
+				count++;
+				// return the alternative translation that we have found:
+				referenceListPhrase->setTranslation(x->getTranslation());
+			}
+			else
+			{
+				// nope - just not a match of any kind
+			}
+		}
+	}
+	return count;
+}
+
 void BackEnd::logTest(bool bSuccess)
 {
 	time_t timeTested(time(0));
@@ -449,6 +555,20 @@ void BackEnd::deletePhrase()
 	}
 }
 
+void BackEnd::updatePhrase(Phrase newPhrase)
+{
+	Phrase* pPhrase = *m_batchItr;
+
+	if (newPhrase.getPhrase() != "")
+	{
+		pPhrase->setPhrase(newPhrase.getPhrase());
+	}
+	if (newPhrase.getTranslation() != "")
+	{
+		pPhrase->setTranslation(newPhrase.getTranslation());
+	}
+}
+
 void BackEnd::reverse()
 {
 	m_bReversed = !m_bReversed;
@@ -468,6 +588,13 @@ bool priorityCmp(Phrase* one, Phrase* two)
 	return (one->getPriority() >
 		two->getPriority());
 }
+
+bool alphTranslationCmp(Phrase* one, Phrase* two)
+{
+	return (one->getTranslation() >
+		two->getTranslation());
+}
+
 
 
 

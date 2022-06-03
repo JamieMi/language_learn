@@ -11,7 +11,7 @@
 
 #include "backend.h"
 
-class Phrase; // for Gods sake
+class Phrase;
 class Milestone;
 
 
@@ -52,8 +52,10 @@ protected:
 	void showRightAndWrongButtons();
 	void showNoButtons();
 	bool doAreYouSure(CString text);
+	void moveToNext(bool result);
 
 	BackEnd b;
+	bool m_automated;
 
 	CFont* m_pFont;
 	CFont* m_pButtonFont;
@@ -86,7 +88,7 @@ protected:
 public:
 	afx_msg void OnBnClickedReverse();
 	afx_msg void OnBnClickedWipeHistory();
-	afx_msg void OnBnClickedSmoothStartDates();
+	afx_msg void OnBnClickedOutputDue();
 	afx_msg void OnBnClickedCopy();
 	afx_msg void OnBnClickedTb7();
 };

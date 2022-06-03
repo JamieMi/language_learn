@@ -3,13 +3,8 @@
 //
 #include "stdafx.h"
 #include "LanguageLearn.h"
-//using <system.dll>
-
 using namespace std;
 
-
-//using namespace System;
-//using namespace System::Windows::Forms;
 
 #include "LanguageLearnDlg.h"
 #include "afxdialogex.h"
@@ -24,6 +19,7 @@ CLanguageLearnDlg::CLanguageLearnDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_LANGUAGELEARN_DIALOG, pParent)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_automated = false;
 }
 
 void CLanguageLearnDlg::DoDataExchange(CDataExchange* pDX)
@@ -50,7 +46,7 @@ BEGIN_MESSAGE_MAP(CLanguageLearnDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_MILESTONES, &CLanguageLearnDlg::OnBnClickedMilestones)
 	ON_BN_CLICKED(IDC_REVERSE, &CLanguageLearnDlg::OnBnClickedReverse)
 	ON_BN_CLICKED(IDC_WIPE_HISTORY, &CLanguageLearnDlg::OnBnClickedWipeHistory)
-	ON_BN_CLICKED(IDC_SMOOTH_START_DATES, &CLanguageLearnDlg::OnBnClickedSmoothStartDates)
+	ON_BN_CLICKED(IDC_OUTPUT_DUE, &CLanguageLearnDlg::OnBnClickedOutputDue)
 	ON_BN_CLICKED(IDC_COPY, &CLanguageLearnDlg::OnBnClickedCopy)
 END_MESSAGE_MAP()
 
@@ -66,7 +62,7 @@ BOOL CLanguageLearnDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	m_pFont = new CFont;
-	m_pFont->CreatePointFont(95/*115*/, _T("Microsoft Sans Serif"/*"Times New Roman"*/));
+	m_pFont->CreatePointFont(95, _T("Microsoft Sans Serif"));
 
 	m_pButtonFont = new CFont;
 	m_pButtonFont->CreatePointFont(110, _T("Microsoft Sans Serif"));
@@ -89,7 +85,6 @@ BOOL CLanguageLearnDlg::OnInitDialog()
 		GetDlgItem(IDs[i])->SetFont(m_pFont);
 		GetDlgItem(IDs[i])->ShowWindow(SW_HIDE);
 	}
-	//GetDlgItem(IDC_STATS_TEXT)->SetFont(m_pStatsFont);
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -135,7 +130,6 @@ void CLanguageLearnDlg::showAnswerButton()
 	GetDlgItem(IDC_SHOWANSWER)->ShowWindow(SW_SHOW);
 	GetDlgItem(IDC_RIGHT)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDC_WRONG)->ShowWindow(SW_HIDE);
-	//GetDlgItem(IDC_ANSWER)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDC_ANSWER2)->ShowWindow(SW_HIDE);
 }
 
@@ -144,7 +138,6 @@ void CLanguageLearnDlg::showRightAndWrongButtons()
 	GetDlgItem(IDC_SHOWANSWER)->ShowWindow(SW_HIDE);
 	GetDlgItem(IDC_RIGHT)->ShowWindow(SW_SHOW);
 	GetDlgItem(IDC_WRONG)->ShowWindow(SW_SHOW);
-	//GetDlgItem(IDC_ANSWER)->ShowWindow(SW_SHOW);
 	GetDlgItem(IDC_ANSWER2)->ShowWindow(SW_SHOW);
 }
 
@@ -171,6 +164,7 @@ void CLanguageLearnDlg::populateLanguageList()
 		b.m_filePath = pszConvertedAnsiString;
 
 		b.readFile();
+		b.readReferenceFile();
 		b.getSelection();
 		showSelection();
 	}
@@ -180,12 +174,38 @@ void CLanguageLearnDlg::showSelection()
 {
 	if (b.m_batch.size() == 0) return;
 	
-	//SetDlgItemText(IDC_CHALLENGE, CString((*b.m_batchItr)->getPhrase().c_str()));
-	//SetDlgItemText(IDC_ANSWER, CString((*b.m_batchItr)->getTranslation().c_str()));
 	SetDlgItemText(IDC_CHALLENGE2, CString((*b.m_batchItr)->getPhrase().c_str()));
 	SetDlgItemText(IDC_ANSWER2, CString((*b.m_batchItr)->getTranslation().c_str()));
 	showAnswerButton();
 	showRecentHistory();
+
+	// Not quite working yet - random characters translate wrongly from the file
+
+	Phrase altPhrase("","");
+	if (b.lookupTranslation(*(b.m_batchItr), &altPhrase) != 0)
+	{
+		if (altPhrase.getTranslation() != "" || altPhrase.getPhrase() != "")
+		{
+			string alternatives("Alternative text available. Do you want to replace with this:\r\n");
+			// something matched
+			if (altPhrase.getTranslation() != "")
+			{
+				alternatives += (*b.m_batchItr)->getTranslation();
+				alternatives += " --->\r\n";
+				alternatives += altPhrase.getTranslation();
+				alternatives += "\r\n";
+			}
+			alternatives += altPhrase.getPhrase();
+			
+			CString altText (alternatives.c_str());
+			if (AfxMessageBox(altText, MB_YESNO) == IDYES)
+			{
+				b.updatePhrase(altPhrase);
+				SetDlgItemText(IDC_CHALLENGE2, CString((*b.m_batchItr)->getPhrase().c_str()));
+				SetDlgItemText(IDC_ANSWER2, CString((*b.m_batchItr)->getTranslation().c_str()));
+			}
+		}
+	}
 }
 
 void CLanguageLearnDlg::display(const string& text)
@@ -232,7 +252,7 @@ void CLanguageLearnDlg::showRecentHistory()
 		}
 		i++;
 	}
-	if (i >= 12) {
+	if (i >= 14) { // corresponds to a year
 		GetDlgItem(IDC_COPY)->ShowWindow(SW_SHOW);
 	}
 	else
@@ -263,17 +283,19 @@ void CLanguageLearnDlg::displayStats()
 
 void CLanguageLearnDlg::OnBnClickedWrong()
 {
-	showAnswerButton();
-	b.logTest(false);
-	displayStats();
-	nextQuestion();
+	moveToNext(false);
 }
 
 
 void CLanguageLearnDlg::OnBnClickedRight()
 {
+	moveToNext(true);
+}
+
+void CLanguageLearnDlg::moveToNext(bool result)
+{
 	showAnswerButton();
-	b.logTest(true);
+	b.logTest(result);
 	displayStats();
 	nextQuestion();
 }
@@ -327,13 +349,27 @@ void CLanguageLearnDlg::OnBnClickedWipeHistory()
 }
 
 
-void CLanguageLearnDlg::OnBnClickedSmoothStartDates()
+void CLanguageLearnDlg::OnBnClickedOutputDue()
 {
-	if (doAreYouSure(_T("This will change the start dates of all entries by a few days in order to smooth out the reappearance of large groups of entries that have been entered at the same time. This is a permanent change. Are you sure you want to proceed?")))
+	if (AfxMessageBox(_T("Output all due vocabulary to a text file and mark as done?"), MB_YESNO) == IDYES)
 	{
-		b.equalise();
+		m_automated = true;
+		bool allOutputted = false;
+		b.openDueFile();
+		
+		while (!allOutputted) {
+			allOutputted = !b.outputDueItem();
+
+			// call same activities next event:
+			moveToNext(true);
+		}
+
+		m_automated = false;
+		b.saveDueFile();
+
+		AfxMessageBox(_T("All due items outputted."), MB_OK);
 	}
-	// TODO: Add your control notification handler code here
+
 }
 
 bool CLanguageLearnDlg::doAreYouSure(CString text)
@@ -343,20 +379,11 @@ bool CLanguageLearnDlg::doAreYouSure(CString text)
 
 void CLanguageLearnDlg::OnBnClickedCopy()
 {
-	// TODO: Add your control notification handler code here
-
-	// get desktop windows and the call toClipboard
-	//HWND hwnd = ::GetActiveWindow();
-	//toClipboard(hwnd, AAA);
-
 	CString szCopyText = CString((*b.m_batchItr)->getTranslation().c_str());
 	szCopyText += "|";
 	szCopyText += CString((*b.m_batchItr)->getPhrase().c_str());
 	szCopyText += "\r\n";
 
-	//void toClipboard(HWND hwnd, const std::string &s) {
-
-	//OpenClipboard(hwnd);
 	OpenClipboard();
 	EmptyClipboard();
 	HGLOBAL hg = GlobalAlloc(GMEM_MOVEABLE, szCopyText.GetLength() + 1);
@@ -364,15 +391,7 @@ void CLanguageLearnDlg::OnBnClickedCopy()
 		CloseClipboard();
 		return;
 	}
-	//memcpy(GlobalLock(hg), s.c_str(), s.size() + 1);
-	
-	//LPCSTR sCopyText;
-	//sCopyText = szCopyText;
-		
-	//std::string sCopyText;
-	//std::string std(sCopyText, szCopyText.GetLength());
 
-	//CString cs("Hello");
 	// Convert a TCHAR string to a LPCSTR
 	CT2CA pszConvertedAnsiString(szCopyText);
 	// construct a std::string using the LPCSTR input
