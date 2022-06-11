@@ -179,8 +179,6 @@ void CLanguageLearnDlg::showSelection()
 	showAnswerButton();
 	showRecentHistory();
 
-	// Not quite working yet - random characters translate wrongly from the file
-
 	Phrase altPhrase("","");
 	if (b.lookupTranslation(*(b.m_batchItr), &altPhrase) != 0)
 	{
@@ -204,6 +202,10 @@ void CLanguageLearnDlg::showSelection()
 				SetDlgItemText(IDC_CHALLENGE2, CString((*b.m_batchItr)->getPhrase().c_str()));
 				SetDlgItemText(IDC_ANSWER2, CString((*b.m_batchItr)->getTranslation().c_str()));
 			}
+		}
+		else
+		{
+			GetDlgItem(IDC_COPY)->ShowWindow(SW_HIDE);
 		}
 	}
 }

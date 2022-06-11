@@ -394,8 +394,15 @@ std::size_t BackEnd::lookupTranslation(Phrase* ourPhrase, Phrase* referenceListP
 			}
 			else
 			{
-				// return the alternative English that we have found:
-				referenceListPhrase->setPhrase(x->getPhrase());
+				if (x->getPhrase() == ourPhrase->getPhrase() + " ¦")
+				{
+					continue; // just an annotation - not a meaningful difference
+				}
+				else
+				{
+					// return the alternative English that we have found:
+					referenceListPhrase->setPhrase(x->getPhrase());
+				}
 			}
 		}
 		else // translation differs
@@ -403,7 +410,6 @@ std::size_t BackEnd::lookupTranslation(Phrase* ourPhrase, Phrase* referenceListP
 			if (x->getPhrase() == ourPhrase->getPhrase())
 			{
 				count++;
-				// return the alternative translation that we have found:
 				referenceListPhrase->setTranslation(x->getTranslation());
 			}
 			else
